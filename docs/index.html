@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Monitoramento de Ofertas</title>
+<style>
+  :root {
+    --bg: #0F1417;
+    --surface: #161C20;
+    --surface-2: #1D242A;
+    --border: #262F36;
+    --text: #E7EDF0;
+    --muted: #8B98A3;
+    --amber: #E8A33D;
+    --green: #4FA98A;
+    --red: #C1554B;
+    --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+    --font-body: 'Inter', 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    background-image:
+      linear-gradient(rgba(232,163,61,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,163,61,0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  header {
+    padding: 32px 40px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 0.02em;
+    margin: 0;
+    font-weight: 600;
+  }
+
+  header h1 .dot {
+    color: var(--amber);
+  }
+
+  .last-run {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  main {
+    padding: 28px 40px 60px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 18px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  .card:hover { border-color: #3A454E; }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .card h2 {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+
+  .card-sub {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 18px;
+    margin-top: 16px;
+    font-family: var(--font-mono);
+  }
+
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat .num { font-size: 20px; font-weight: 600; }
+  .stat .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat.new .num { color: var(--amber); }
+  .stat.removed .num { color: var(--red); }
+  .stat.survive .num { color: var(--green); }
+
+  svg.spark { display: block; margin-top: 16px; width: 100%; height: 44px; }
+
+  .empty {
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 60px 20px;
+    text-align: center;
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+  }
+
+  /* Painel de detalhe */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(6,8,10,0.72);
+    display: none; align-items: flex-start; justify-content: center;
+    padding: 40px 20px; overflow-y: auto; z-index: 10;
+  }
+  .overlay.open { display: flex; }
+
+  .panel {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-width: 760px;
+    width: 100%;
+    padding: 28px 30px;
+  }
+
+  .panel-head { display:flex; justify-content: space-between; align-items:flex-start; margin-bottom: 18px;}
+  .panel-head h2 { font-family: var(--font-display); font-size: 20px; margin: 0; }
+  .close-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-size: 16px;
+  }
+  .close-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  .section-label {
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted); margin: 22px 0 10px;
+  }
+
+  .ad-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .ad-row:last-child { border-bottom: none; }
+  .ad-snippet { flex: 1; color: var(--text); line-height: 1.4; }
+  .ad-meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .badge {
+    font-family: var(--font-mono); font-size: 10px; padding: 2px 6px; border-radius: 3px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .badge.video { background: rgba(232,163,61,0.15); color: var(--amber); }
+  .badge.imagem { background: rgba(79,169,138,0.15); color: var(--green); }
+  .badge.carrossel { background: rgba(139,152,163,0.2); color: var(--muted); }
+  .badge.desconhecido { background: rgba(139,152,163,0.15); color: var(--muted); }
+
+  footer {
+    text-align: center; font-family: var(--font-mono); font-size: 11px;
+    color: var(--muted); padding: 30px 20px 50px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot">●</span> Painel de Monitoramento de Ofertas</h1>
+  <div class="last-run" id="lastRun">carregando...</div>
+</header>
+
+<main>
+  <div class="grid" id="grid">
+    <div class="empty">Carregando dados…</div>
+  </div>
+</main>
+
+<footer>coleta automática diária via GitHub Actions · dados públicos da Biblioteca de Anúncios</footer>
+
+<div class="overlay" id="overlay">
+  <div class="panel" id="panel"></div>
+</div>
+
+<script>
+async function fetchJson(path) {
+  try {
+    const res = await fetch(path + '?_=' + Date.now());
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+function slugify(name) {
+  return name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'oferta';
+}
+
+function sparkline(values) {
+  if (!values.length) return '';
+  const w = 300, h = 40, pad = 4;
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = (max - min) || 1;
+  const step = values.length > 1 ? (w - pad * 2) / (values.length - 1) : 0;
+  const pts = values.map((v, i) => {
+    const x = pad + i * step;
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <polyline points="${pts}" fill="none" stroke="#E8A33D" stroke-width="2" />
+  </svg>`;
+}
+
+function adRow(ad) {
+  const badge = `<span class="badge ${ad.media_type}">${ad.media_type}</span>`;
+  const meta = ad.days_running !== undefined
+    ? `${ad.days_running}d rodando`
+    : (ad.started_raw || '');
+  return `<div class="ad-row">
+    <div class="ad-snippet">${badge} ${ad.snippet ? ad.snippet.replace(/</g,'&lt;') : '(sem prévia de texto — ver ID)'} <br>
+      <span class="ad-meta">ID: ${ad.library_id}</span>
+    </div>
+    <div class="ad-meta">${meta}</div>
+  </div>`;
+}
+
+function openPanel(offerName, diffs) {
+  const last = diffs[diffs.length - 1];
+  const survivors = (last.top_survivors || []).map(adRow).join('') || '<p class="ad-meta">Sem dados.</p>';
+  const news = (last.new_ads || []).map(adRow).join('') || '<p class="ad-meta">Nenhum criativo novo hoje.</p>';
+  const removed = (last.removed_ads || []).map(adRow).join('') || '<p class="ad-meta">Nenhum criativo removido hoje.</p>';
+
+  document.getElementById('panel').innerHTML = `
+    <div class="panel-head">
+      <h2>${offerName}</h2>
+      <button class="close-btn" onclick="closePanel()">✕</button>
+    </div>
+    <div class="section-label">Criativos que mais sobrevivem (sinal de vencedor)</div>
+    ${survivors}
+    <div class="section-label">Novos hoje (${last.date})</div>
+    ${news}
+    <div class="section-label">Removidos hoje (${last.date})</div>
+    ${removed}
+  `;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('overlay').classList.remove('open');
+}
+document.getElementById('overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'overlay') closePanel();
+});
+
+async function init() {
+  const offersConfig = await fetchJson('data/offers.json');
+  const lastRun = await fetchJson('data/last_run.json');
+
+  document.getElementById('lastRun').textContent = lastRun
+    ? `última coleta: ${lastRun.date}`
+    : 'ainda sem coletas registradas';
+
+  const grid = document.getElementById('grid');
+  const offers = (offersConfig && offersConfig.offers || []).filter(o => o.active !== false);
+
+  if (!offers.length) {
+    grid.innerHTML = '<div class="empty">Nenhuma oferta ativa em data/offers.json.<br>Adicione uma oferta e rode a coleta.</div>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  for (const offer of offers) {
+    const slug = slugify(offer.name);
+    const diffs = await fetchJson(`data/diffs/${slug}.json`);
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    if (!diffs || !diffs.length) {
+      card.innerHTML = `
+        <div class="card-top"><h2>${offer.name}</h2></div>
+        <div class="card-sub">ainda sem dados coletados</div>`;
+      grid.appendChild(card);
+      continue;
+    }
+
+    const last = diffs[diffs.length - 1];
+    const spark = sparkline(diffs.map(d => d.total_active));
+
+    card.innerHTML = `
+      <div class="card-top">
+        <div>
+          <h2>${offer.name}</h2>
+          <div class="card-sub">${diffs.length} dia(s) monitorado(s) · atualizado ${last.date}</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat"><div class="num">${last.total_active}</div><div class="label">ativos</div></div>
+        <div class="stat new"><div class="num">+${last.new_count}</div><div class="label">novos</div></div>
+        <div class="stat removed"><div class="num">-${last.removed_count}</div><div class="label">removidos</div></div>
+        <div class="stat survive"><div class="num">${last.surviving_count}</div><div class="label">sobrevivem</div></div>
+      </div>
+      ${spark}
+    `;
+    card.addEventListener('click', () => openPanel(offer.name, diffs));
+    grid.appendChild(card);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
